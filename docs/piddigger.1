@@ -1,0 +1,60 @@
+.TH PIDDIGGER 1 "2026" "piddigger" "Blue-team forensics"
+.SH NAME
+piddigger \- live PID forensics TUI for blue teams
+.SH SYNOPSIS
+.B piddigger
+.RI [ PID ]
+.RI [ options ]
+.SH DESCRIPTION
+.B piddigger
+is a read-only investigator for a single running Linux process. It reads
+.I /proc
+to present process identity, open files (including deleted-but-open and memfd),
+sockets, memory maps, namespaces, capabilities, seccomp status, threads and the
+environment, runs triage heuristics, and watches a live activity timeline.
+.PP
+Optional, opt-in live capture wraps
+.BR strace ,
+.BR ltrace ,
+.BR perf ,
+.BR bpftrace ,
+.BR tcpdump ,
+.BR gdb " and " gcore .
+Collected artifacts are written into a write-once evidence case with SHA-256
+hashes and an append-only chain-of-custody log.
+.SH OPTIONS
+.TP
+.BI \-\-theme " NAME"
+Color theme: thugsred, midnight, carbon, dracula, twilight, daylight.
+.TP
+.BI \-\-interval " MS"
+Refresh interval in milliseconds (250-10000).
+.TP
+.B \-\-ascii
+Use ASCII borders instead of Unicode box drawing.
+.TP
+.B \-\-no\-icons
+Disable Nerd Font icons.
+.TP
+.BI \-\-case\-dir " DIR"
+Directory to hold evidence cases (default: current directory).
+.TP
+.B \-\-demo
+Run against a built-in synthetic process; needs no root or live /proc.
+.TP
+.B \-\-json
+Print one JSON snapshot to stdout and exit.
+.TP
+.B \-\-report
+Print a plain-text triage report to stdout and exit.
+.SH NOTES
+Collection is read-only. Running as root or with CAP_SYS_PTRACE gives complete
+visibility; otherwise some /proc entries are unreadable and findings may be
+incomplete. Findings are investigative leads, not verdicts.
+.SH AUTHOR
+Kawaiipantsu for THUGS(red) <https://thugs.red>.
+.SH SEE ALSO
+.BR proc (5),
+.BR strace (1),
+.BR bpftrace (8),
+.BR gcore (1)
