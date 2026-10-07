@@ -69,6 +69,11 @@ struct Cli {
     /// Print a plain-text triage report to stdout and exit (no TUI).
     #[arg(long)]
     report: bool,
+
+    /// List the trace/capture tools piddigger uses, which are installed, and
+    /// the apt command for the missing ones, then exit.
+    #[arg(long)]
+    tools: bool,
 }
 
 fn main() {
@@ -88,6 +93,11 @@ fn resolve_theme(name: &str) -> ThemeKind {
 
 fn run(cli: Cli) -> io::Result<()> {
     let interval = cli.interval.clamp(250, 10_000);
+
+    if cli.tools {
+        write!(io::stdout().lock(), "{}", tools::checklist_text())?;
+        return Ok(());
+    }
 
     // Non-interactive output modes.
     if cli.json || cli.report {

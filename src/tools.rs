@@ -95,6 +95,102 @@ pub fn ptrace_scope() -> Option<u8> {
         .ok()
 }
 
+/// Plain-text checklist for `--tools`: every external tool the trace menu can
+/// run, whether it is installed, the privileges it needs, and the apt command
+/// for whatever is missing.
+pub fn checklist_text() -> String {
+    checklist(
+        find_in_path,
+        unsafe { libc::geteuid() } == 0,
+        ptrace_scope(),
+    )
+}
+
+fn checklist(locate: impl Fn(&str) -> Option<PathBuf>, root: bool, scope: Option<u8>) -> String {
+    let mut out = format!(
+        "piddigger {} — trace & capture tools\n\
+         Optional: /proc collection works without them; the trace menu (R) needs them.\n\n\
+         {:<10}{:<12}{:<9}STATUS\n",
+        env!("CARGO_PKG_VERSION"),
+        "TOOL",
+        "PACKAGE",
+        "IMPACT"
+    );
+    let mut seen: Vec<&str> = Vec::new();
+    let mut missing: Vec<&str> = Vec::new();
+    for p in PROFILES {
+        if seen.contains(&p.tool) {
+            continue;
+        }
+        seen.push(p.tool);
+        let status = match locate(p.tool) {
+            Some(path) => format!("ok  {}", path.display()),
+            None => {
+                if !missing.contains(&p.package) {
+                    missing.push(p.package);
+                }
+                "MISSING".into()
+            }
+        };
+        let uses: Vec<&Profile> = PROFILES.iter().filter(|q| q.tool == p.tool).collect();
+        out.push_str(&format!(
+            "{:<10}{:<12}{:<9}{status}\n{:10}{}\n",
+            p.tool,
+            p.package,
+            p.impact.label(),
+            "",
+            capture_names(&uses)
+        ));
+    }
+
+    out.push_str("\nPrivileges\n");
+    out.push_str(if root {
+        "  root          yes\n"
+    } else {
+        "  root          no — run with sudo for complete /proc visibility and ptrace/pause captures\n"
+    });
+    if let Some(scope) = scope {
+        let note = match scope {
+            0 => "classic",
+            1 if root => "restricted — fine as root",
+            1 => "restricted — ptrace/pause captures need sudo",
+            2 => "admin-only — ptrace/pause captures need CAP_SYS_PTRACE",
+            _ => "disabled — ptrace/pause captures cannot attach until reboot",
+        };
+        out.push_str(&format!("  ptrace_scope  {scope} {note}\n"));
+    }
+
+    if missing.is_empty() {
+        out.push_str("\nAll capture tools are installed.\n");
+    } else {
+        out.push_str(&format!(
+            "\nInstall the missing tools:\n  sudo apt install {}\n",
+            missing.join(" ")
+        ));
+    }
+    out
+}
+
+/// Joins profile titles, dropping a repeated "Group · " prefix.
+fn capture_names(profiles: &[&Profile]) -> String {
+    let mut prev = "";
+    profiles
+        .iter()
+        .map(|p| match p.title.split_once(" · ") {
+            Some((head, tail)) if head == prev => tail,
+            Some((head, _)) => {
+                prev = head;
+                p.title
+            }
+            None => {
+                prev = "";
+                p.title
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
 /// Builds the BPF filter for the target's current TCP/UDP ports.
 pub fn port_filter(snap: &Snapshot) -> Option<String> {
     let mut ports: Vec<u16> = snap
@@ -423,6 +519,35 @@ mod tests {
             assert!(!stages.is_empty());
             assert_eq!(stages[0][0], p.tool, "{}", p.id);
         }
+    }
+
+    #[test]
+    fn checklist_lists_missing_packages_once() {
+        let text = checklist(
+            |t| (t == "strace").then(|| PathBuf::from("/usr/bin/strace")),
+            false,
+            Some(1),
+        );
+        assert!(text.contains("ok  /usr/bin/strace"), "{text}");
+        assert!(
+            text.contains("Syscalls · everything, file access, network"),
+            "{text}"
+        );
+        assert!(
+            text.contains("ptrace_scope  1 restricted — ptrace/pause captures need sudo"),
+            "{text}"
+        );
+        assert!(
+            text.contains("sudo apt install ltrace linux-perf bpftrace tcpdump gdb\n"),
+            "{text}"
+        );
+
+        let all = checklist(|t| Some(PathBuf::from(t)), true, None);
+        assert!(all.contains("All capture tools are installed."), "{all}");
+        assert!(
+            !all.contains("MISSING") && !all.contains("ptrace_scope"),
+            "{all}"
+        );
     }
 
     #[test]

@@ -12,7 +12,7 @@ Identity, files, sockets, memory, behaviour and evidence — in one live termina
 ![Linux](https://img.shields.io/badge/Linux-0a0a0c?style=for-the-badge&logo=linux&logoColor=white)
 ![Rust](https://img.shields.io/badge/Rust-1.94%2B-14100f?style=for-the-badge&logo=rust)
 ![Read-only](https://img.shields.io/badge//proc-READ_ONLY-0a8a46?style=for-the-badge)
-![Version](https://img.shields.io/badge/release-0.1.0-ff2b3b?style=for-the-badge)
+![Version](https://img.shields.io/badge/release-0.1.1-ff2b3b?style=for-the-badge)
 [![Build](https://github.com/kawaiipantsu/piddigger/actions/workflows/build.yml/badge.svg)](https://github.com/kawaiipantsu/piddigger/actions/workflows/build.yml)
 [![License](https://img.shields.io/badge/LICENSE-MIT-ff2b3b?style=for-the-badge)](LICENSE)
 
@@ -49,7 +49,7 @@ A left menu switches between twelve views; the Overview is a live dashboard. The
 *Actual terminal capture (`--demo`, thugsred theme). More: [Findings](assets/screenshots/findings.svg) · [Trace menu](assets/screenshots/trace.svg).*
 
 ```text
-> piddigger v0.1.0              Live PID Forensics for Blue Teams              Rust • TUI • Forensics
+> piddigger v0.1.1              Live PID Forensics for Blue Teams              Rust • TUI • Forensics
 ╭ MENU ────────────────╮┏ Process Information ━━━━━━━━━━━━━━━━━━━━━━┓╭ Open Files (7) ─────────────────────╮
 │  Overview            │┃ PID      4982                            ┃│ FD  TYPE   PATH                     │
 │  Tree                │┃ Name     nginx                           ┃│ 4   del    /dev/shm/.cache/payload  │
@@ -78,10 +78,22 @@ A left menu switches between twelve views; the Overview is a live dashboard. The
 
 ## 📦 Build & install
 
-Download the `.deb` for your architecture from [Releases](https://github.com/kawaiipantsu/piddigger/releases/latest):
+Install from the signed [THUGS(red) APT repository](https://apt.thugs.red) (suite `zerotrust`). Check the archive key's SHA-256 before trusting it:
 
 ```sh
-sudo apt install ./piddigger_0.1.0_amd64.deb
+key=$(mktemp)
+curl -fsS --proto '=https' https://apt.thugs.red/repo/thugsred-archive-keyring.gpg -o "$key"
+echo "026dd9704f4c3c51dc060e39d2834e81d21bf25f71e6ac943061ac2b4c2c1019  $key" | sha256sum -c -
+sudo install -m 0644 "$key" /usr/share/keyrings/thugsred-archive-keyring.gpg
+printf '%s\n' 'Types: deb' 'URIs: https://apt.thugs.red/repo' 'Suites: zerotrust' 'Components: main' \
+  'Signed-By: /usr/share/keyrings/thugsred-archive-keyring.gpg' | sudo tee /etc/apt/sources.list.d/thugsred.sources
+sudo apt update && sudo apt install piddigger
+```
+
+If the THUGS(red) repository is already configured, `sudo apt install piddigger` is enough. Or download the `.deb` for your architecture from [Releases](https://github.com/kawaiipantsu/piddigger/releases/latest):
+
+```sh
+sudo apt install ./piddigger_0.1.1_amd64.deb
 sudo piddigger          # root (or CAP_SYS_PTRACE) gives complete visibility
 ```
 
@@ -93,10 +105,10 @@ cd piddigger
 make build
 make test check
 make deb
-sudo dpkg -i dist/piddigger_0.1.0_amd64.deb
+sudo dpkg -i dist/piddigger_0.1.1_amd64.deb
 ```
 
-The trace features use standard tools when present: `strace`, `ltrace`, `linux-perf`, `bpftrace`, `tcpdump`, `gdb`. They are **Recommends/Suggests**, not hard dependencies — piddigger tells you what to `apt install` when you pick a capture that needs one.
+The trace features use standard tools when present: `strace`, `ltrace`, `linux-perf`, `bpftrace`, `tcpdump`, `gdb`. They are **Recommends/Suggests**, not hard dependencies — piddigger tells you what to `apt install` when you pick a capture that needs one, and `piddigger --tools` lists what is installed and what is missing.
 
 ## 🚀 Usage
 
@@ -106,6 +118,7 @@ piddigger                      # open the process picker and choose
 piddigger --demo               # explore a synthetic suspicious process, no root needed
 piddigger 4982 --report        # print a plain-text triage report and exit
 piddigger 4982 --json          # print one machine-readable snapshot and exit
+piddigger --tools              # which trace tools are installed, and how to add the rest
 piddigger 4982 --theme daylight --no-icons --ascii
 ```
 

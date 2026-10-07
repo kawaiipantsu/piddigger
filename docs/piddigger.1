@@ -47,6 +47,12 @@ Print one JSON snapshot to stdout and exit.
 .TP
 .B \-\-report
 Print a plain-text triage report to stdout and exit.
+.TP
+.B \-\-tools
+List the trace and capture tools piddigger uses, show which are installed and
+whether privileges allow attaching, print the
+.B apt install
+command for the missing ones, and exit.
 .SH NOTES
 Collection is read-only. Running as root or with CAP_SYS_PTRACE gives complete
 visibility; otherwise some /proc entries are unreadable and findings may be

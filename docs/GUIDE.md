@@ -138,6 +138,9 @@ Install the tools you need — they are not hard dependencies:
 sudo apt install strace ltrace linux-perf bpftrace tcpdump gdb
 ```
 
+`piddigger --tools` shows which of them are installed, checks root and
+`ptrace_scope`, and prints the `apt install` line for whatever is missing.
+
 ## Evidence case layout
 
 Press `s` to open a case (on first use) and preserve a snapshot. Volatile data
@@ -195,6 +198,7 @@ make build            # release binary at target/release/piddigger
 make test             # unit tests (parsers, findings, evidence, tracing)
 make check            # fmt --check + clippy -D warnings + tests
 make deb              # dist/piddigger_<version>_<arch>.deb
+make deb-bookworm     # same, built in pinned Debian 12 userspace (docker)
 make demo             # run against the synthetic process
 make preview          # regenerate documentation SVGs (needs python3-pyte)
 sudo make install     # install to /usr/bin and /usr/share/doc
@@ -204,3 +208,20 @@ The package declares its **actual** minimum glibc, derived from the built
 binary, plus `libgcc-s1`. The trace tools are `Recommends`/`Suggests`, so the
 package installs without them and piddigger tells you what to add when a capture
 needs one. CI builds and packages for amd64 and arm64.
+
+Maintainers publish to [apt.thugs.red](https://apt.thugs.red) (suite
+`zerotrust`) from the packages in `dist/`:
+
+```sh
+make deb-bookworm     # release build that installs on Debian 12 and newer
+make apt-status       # token reaches the suite; nothing unrelated is staged
+make apt-publish      # upload, stage, review, publish, then verify
+make apt-verify       # public signed index and download match dist/ (no token)
+```
+
+The project token lives outside the checkout in a 0600 file,
+`~/.config/xxc-aptd/piddigger.toml` (or `$PIDDIGGER_APT_CONFIG`), with
+`api_base`, `suite = "zerotrust"` and `api_token`; the shared THUGS(red)
+`nulllobby.toml` is used when no piddigger file exists. Publishing refuses
+removals, downgrades, unrelated staged packages and replacing a published
+version with different bytes — bump the version instead.

@@ -1,6 +1,6 @@
 [package]
 name = "piddigger"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 rust-version = "1.94"
 description = "Blue-team TUI for forensic investigation of a running Linux process"

@@ -9,7 +9,7 @@ CARGO   ?= cargo
 TARGET_FLAG = $(if $(TARGET),--target $(TARGET),)
 BIN = target/$(if $(TARGET),$(TARGET)/,)release/piddigger
 
-.PHONY: all build run demo test check fmt clippy deb install uninstall clean preview
+.PHONY: all build run demo test check fmt clippy deb deb-bookworm apt-status apt-publish apt-verify install uninstall clean preview
 
 all: build
 
@@ -38,6 +38,26 @@ clippy:
 
 deb: build
 	./scripts/package-deb.sh $(BIN)
+
+# Release build in pinned Debian 12 userspace (needs docker), so the package
+# installs on Debian 12 and newer. Writes the same dist/ file as `make deb`.
+deb-bookworm:
+	docker build -t piddigger-bookworm -f packaging/bookworm.Dockerfile packaging
+	docker run --rm -u "$$(id -u):$$(id -g)" -v "$(CURDIR)":/workspace \
+		-e CARGO_HOME=/workspace/target/bookworm/cargo-home piddigger-bookworm \
+		sh -c 'cargo build --release --locked --target-dir target/bookworm && ./scripts/package-deb.sh target/bookworm/release/piddigger'
+
+# Publish to apt.thugs.red (suite zerotrust). Publishes the .deb files already in
+# dist/ for the Cargo.toml version, so run `make deb-bookworm` (or `make deb`)
+# first. See scripts/apt-repo.py for the credential file; apt-verify needs none.
+apt-status:
+	python3 scripts/apt-repo.py status
+
+apt-publish:
+	python3 scripts/apt-repo.py publish
+
+apt-verify:
+	python3 scripts/apt-repo.py verify
 
 install: build
 	install -Dm755 $(BIN) $(DESTDIR)$(PREFIX)/bin/piddigger
